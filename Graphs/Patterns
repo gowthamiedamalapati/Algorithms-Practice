@@ -1,0 +1,912 @@
+Graph
+
+🐍 Graph Patterns - Python Complete Guide
+🎯 Golden Rule for "visited" marking:
+- BFS: Mark visited BEFORE adding to queue
+- DFS Recursive: Mark visited AT FUNCTION START
+- DFS Iterative: Mark visited AFTER popping from stack
+----------
+1️⃣ DFS (Explore all paths, connected components)
+
+Recursive (Preferred - Cleaner)
+
+    def dfs(node, visited, graph):
+        visited[node] = True
+        for neighbor in graph[node]:
+            if not visited[neighbor]:
+                dfs(neighbor, visited, graph)
+
+Iterative (For very deep graphs)
+
+    def dfs_iterative(start, graph):
+        visited = set()
+        stack = [start]
+        
+        while stack:
+            node = stack.pop()
+            
+            if node in visited:
+                continue
+            visited.add(node)
+            
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    stack.append(neighbor)
+        
+        return visited
+
+Problems: 200, 695, 133, 547, 797
+
+----------
+2️⃣ BFS (Shortest path unweighted, level-by-level)
+
+Basic BFS
+
+    from collections import deque
+    
+    def bfs(start, graph):
+        visited = set()
+        queue = deque([start])
+        visited.add(start)  # Mark BEFORE adding!
+        
+        while queue:
+            node = queue.popleft()
+            # Process node
+            
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    visited.add(neighbor)  # Mark BEFORE adding!
+                    queue.append(neighbor)
+
+BFS with Distance Tracking
+
+    def bfs_shortest_path(start, target, graph):
+        visited = set()
+        queue = deque([(start, 0)])  # (node, distance)
+        visited.add(start)
+        
+        while queue:
+            node, dist = queue.popleft()
+            
+            if node == target:
+                return dist
+            
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, dist + 1))
+        
+        return -1  # Not reachable
+
+Problems: 127, 1091, 994, 286, 102
+
+----------
+3️⃣ Topological Sort (Order tasks with dependencies)
+
+Kahn's Algorithm (BFS + In-degree)
+
+    from collections import deque, defaultdict
+    
+    def topological_sort(n, graph):
+        # Calculate in-degrees
+        indegree = [0] * n
+        for node in range(n):
+            for neighbor in graph[node]:
+                indegree[neighbor] += 1
+        
+        # Start with nodes having in-degree 0
+        queue = deque([i for i in range(n) if indegree[i] == 0])
+        result = []
+        
+        while queue:
+            node = queue.popleft()
+            result.append(node)
+            
+            for neighbor in graph[node]:
+                indegree[neighbor] -= 1
+                if indegree[neighbor] == 0:
+                    queue.append(neighbor)
+        
+        # If result has all nodes, no cycle; otherwise cycle exists
+        return result if len(result) == n else []
+
+Problems: 207, 210, 269
+
+----------
+4️⃣ Union-Find (Dynamic connectivity, grouping)
+    class UnionFind:
+        def __init__(self, n):
+            self.parent = list(range(n))
+            self.rank = [0] * n
+            self.components = n
+        
+        def find(self, x):
+            if self.parent[x] != x:
+                self.parent[x] = self.find(self.parent[x])  # Path compression
+            return self.parent[x]
+        
+        def union(self, x, y):
+            rootX = self.find(x)
+            rootY = self.find(y)
+            
+            if rootX == rootY:
+                return False  # Already connected
+            
+            # Union by rank
+            if self.rank[rootX] < self.rank[rootY]:
+                self.parent[rootX] = rootY
+            elif self.rank[rootX] > self.rank[rootY]:
+                self.parent[rootY] = rootX
+            else:
+                self.parent[rootY] = rootX
+                self.rank[rootX] += 1
+            
+            self.components -= 1
+            return True
+        
+        def connected(self, x, y):
+            return self.find(x) == self.find(y)
+
+Problems: 547, 684, 1319, 323, 1584
+
+----------
+5️⃣ Cycle Detection
+
+Directed Graph (3-state DFS)
+
+    def has_cycle_directed(graph):
+        n = len(graph)
+        state = [0] * n  # 0=unvisited, 1=visiting, 2=visited
+        
+        def dfs(node):
+            if state[node] == 1:
+                return True  # Back edge = cycle
+            if state[node] == 2:
+                return False  # Already processed
+            
+            state[node] = 1  # Mark as visiting
+            
+            for neighbor in graph[node]:
+                if dfs(neighbor):
+                    return True
+            
+            state[node] = 2  # Mark as visited
+            return False
+        
+        for i in range(n):
+            if state[i] == 0:
+                if dfs(i):
+                    return True
+        
+        return False
+
+Undirected Graph (DFS with parent tracking)
+
+    def has_cycle_undirected(graph):
+        n = len(graph)
+        visited = [False] * n
+        
+        def dfs(node, parent):
+            visited[node] = True
+            
+            for neighbor in graph[node]:
+                if not visited[neighbor]:
+                    if dfs(neighbor, node):
+                        return True
+                elif neighbor != parent:
+                    return True  # Visited non-parent = cycle
+            
+            return False
+        
+        for i in range(n):
+            if not visited[i]:
+                if dfs(i, -1):
+                    return True
+        
+        return False
+
+Problems: 207, 261, 684, 802
+
+----------
+6️⃣ Dijkstra (Shortest path weighted, non-negative)
+    import heapq
+    
+    def dijkstra(start, target, n, graph):
+        dist = [float('inf')] * n
+        dist[start] = 0
+        
+        pq = [(0, start)]  # (distance, node)
+        
+        while pq:
+            d, node = heapq.heappop(pq)
+            
+            if d > dist[node]:
+                continue  # Skip outdated entry
+            
+            if node == target:
+                return d
+            
+            for neighbor, weight in graph[node]:
+                new_dist = d + weight
+                if new_dist < dist[neighbor]:
+                    dist[neighbor] = new_dist
+                    heapq.heappush(pq, (new_dist, neighbor))
+        
+        return dist[target] if dist[target] != float('inf') else -1
+
+Problems: 743, 787, 1631
+
+----------
+7️⃣ Grid as Graph (Matrix problems)
+    def dfs_grid(r, c, grid, visited):
+        rows, cols = len(grid), len(grid[0])
+        
+        # Boundary check
+        if r < 0 or r >= rows or c < 0 or c >= cols:
+            return
+        if visited[r][c] or grid[r][c] == 0:
+            return
+        
+        visited[r][c] = True
+        
+        # 4 directions: right, down, left, up
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        
+        for dr, dc in directions:
+            dfs_grid(r + dr, c + dc, grid, visited)
+
+Complete Number of Islands Example
+
+    def numIslands(grid):
+        if not grid:
+            return 0
+        
+        rows, cols = len(grid), len(grid[0])
+        visited = [[False] * cols for _ in range(rows)]
+        islands = 0
+        
+        def dfs(r, c):
+            if (r < 0 or r >= rows or c < 0 or c >= cols or
+                visited[r][c] or grid[r][c] == '0'):
+                return
+            
+            visited[r][c] = True
+            
+            # Explore 4 directions
+            dfs(r + 1, c)
+            dfs(r - 1, c)
+            dfs(r, c + 1)
+            dfs(r, c - 1)
+        
+        for r in range(rows):
+            for c in range(cols):
+                if grid[r][c] == '1' and not visited[r][c]:
+                    islands += 1
+                    dfs(r, c)
+        
+        return islands
+
+Problems: 200, 695, 994, 286, 130
+
+----------
+8️⃣ Minimum Spanning Tree (Connect all with min cost)
+
+Kruskal's Algorithm
+
+    def kruskal(n, edges):
+        # Sort edges by weight
+        edges.sort(key=lambda x: x[2])
+        
+        uf = UnionFind(n)
+        total_cost = 0
+        edges_used = 0
+        
+        for u, v, weight in edges:
+            if uf.union(u, v):
+                total_cost += weight
+                edges_used += 1
+                if edges_used == n - 1:
+                    break
+        
+        return total_cost if edges_used == n - 1 else -1
+
+Problems: 1584, 1135
+
+----------
+9️⃣ Backtracking on Graphs (Find all paths)
+    def find_all_paths(graph, start, target):
+        all_paths = []
+        
+        def backtrack(node, path):
+            path.append(node)
+            
+            if node == target:
+                all_paths.append(path[:])  # Make a copy
+            else:
+                for neighbor in graph[node]:
+                    backtrack(neighbor, path)
+            
+            path.pop()  # Backtrack
+        
+        backtrack(start, [])
+        return all_paths
+
+Problems: 797, 212
+
+----------
+🔟 Bipartite Check (Can 2-color the graph?)
+    from collections import deque
+    
+    def is_bipartite(graph):
+        n = len(graph)
+        color = [0] * n  # 0=uncolored, 1/-1 are two colors
+        
+        for start in range(n):
+            if color[start] != 0:
+                continue
+            
+            queue = deque([start])
+            color[start] = 1
+            
+            while queue:
+                node = queue.popleft()
+                
+                for neighbor in graph[node]:
+                    if color[neighbor] == 0:
+                        color[neighbor] = -color[node]
+                        queue.append(neighbor)
+                    elif color[neighbor] == color[node]:
+                        return False  # Same color = not bipartite
+        
+        return True
+
+Problems: 785, 886
+
+----------
+📊 Pattern Recognition Cheat Sheet
+| If Problem Asks                | Pattern               | Key Data Structure           |
+| ------------------------------ | --------------------- | ---------------------------- |
+| Shortest path (unweighted)     | BFS                   | `deque` + `set`              |
+| Shortest path (weighted)       | Dijkstra              | `heapq` + `list`             |
+| All paths / explore everything | DFS                   | Recursion or `list` (stack)  |
+| Connected components           | DFS/BFS or Union-Find | `set` or UnionFind class     |
+| Detect cycle (directed)        | DFS 3-state           | `list` with 3 states         |
+| Detect cycle (undirected)      | Union-Find or DFS     | UnionFind or parent tracking |
+| Order with dependencies        | Topological Sort      | `deque` + in-degree array    |
+| Dynamic connectivity           | Union-Find            | UnionFind class              |
+| Minimum cost to connect        | MST                   | Sort + UnionFind             |
+| Can split into 2 groups?       | Bipartite             | `deque` + color array        |
+| Matrix/Grid problems           | Grid DFS/BFS          | 2D array + directions        |
+| Find all solutions             | Backtracking          | Recursion + path list        |
+
+----------
+🎯 Python-Specific Tips
+
+1. Graph Representation
+
+    # Adjacency List (most common)
+    graph = {
+        0: [1, 2],
+        1: [2],
+        2: [0, 3],
+        3: [3]
+    }
+    
+    # Or using defaultdict
+    from collections import defaultdict
+    graph = defaultdict(list)
+    
+    # Or as list of lists
+    graph = [[] for _ in range(n)]
+
+2. Visited Set vs Array
+
+    # For sparse graphs or unknown node IDs
+    visited = set()
+    visited.add(node)
+    if node in visited:
+        # ...
+    
+    # For dense graphs with known range [0, n)
+    visited = [False] * n
+    visited[node] = True
+    if visited[node]:
+        # ...
+
+3. Common Imports
+
+    from collections import deque, defaultdict
+    import heapq
+
+4. Grid Directions
+
+    # 4 directions
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    
+    # 8 directions (including diagonals)
+    directions = [
+        (0, 1), (1, 0), (0, -1), (-1, 0),
+        (1, 1), (1, -1), (-1, 1), (-1, -1)
+    ]
+    
+    # Usage
+    for dr, dc in directions:
+        nr, nc = r + dr, c + dc
+        # check and process
+----------
+💡 Memory Tricks (Python Edition)
+1. BFS = `deque` (pronounced "deck" like a deck of cards you deal from)
+2. DFS = `list` as stack (or just recursion)
+3. Topological = Count arrows coming IN (`indegree`)
+4. Union-Find = `parent` list (family tree)
+5. Dijkstra = `heapq` (always pick smallest)
+6. Cycle = Track state (WHITE → GRAY → BLACK)
+7. Grid = `[(0,1), (1,0), (0,-1), (-1,0)]` (clockwise from right)
+8. MST = Sort then union
+9. Backtracking = `append()` → recurse → `pop()`
+10. Bipartite = Flip colors (`-color[node]`)
+----------
+⚡ Common Python Mistakes to Avoid
+| Pattern        | Common Mistake                         | Fix                                          |
+| -------------- | -------------------------------------- | -------------------------------------------- |
+| BFS            | Using `list.pop(0)` instead of `deque` | Use `deque.popleft()` (O(1) vs O(n))         |
+| DFS            | Forgetting base case in recursion      | Always check visited/bounds first            |
+| Graph Building | Not initializing all nodes             | Use `defaultdict(list)` or pre-init          |
+| Visited        | Using list when set is better          | Use `set()` for O(1) lookup                  |
+| Grid           | Mixing up row/col order                | Always `grid[row][col]` not `grid[col][row]` |
+| Union-Find     | Not using path compression             | Add `self.parent[x] = self.find(...)`        |
+| Dijkstra       | Forgetting to handle inf               | Use `float('inf')` and check before return   |
+| Backtracking   | Modifying original list                | Use `path[:]` or `path.copy()`               |
+
+----------
+🧭 Graph Patterns - Java Complete Guide
+🎯 Golden Rule for "visited" marking:
+- BFS: Mark visited BEFORE adding to queue
+- DFS Recursive: Mark visited AT FUNCTION START
+- DFS Iterative: Mark visited AFTER popping from stack
+----------
+1️⃣ DFS (Explore all paths, connected components)
+    // Recursive (preferred - cleaner)
+    void dfs(int node, boolean[] visited, List<List<Integer>> graph) {
+        visited[node] = true;
+        for (int nei : graph.get(node)) {
+            if (!visited[nei])
+                dfs(nei, visited, graph);
+        }
+    }
+    
+    // Iterative (for very deep graphs)
+    Stack<Integer> stack = new Stack<>();
+    stack.push(start);
+    while (!stack.isEmpty()) {
+        int node = stack.pop();
+        if (visited[node]) continue;
+        visited[node] = true;
+        for (int nei : graph.get(node))
+            if (!visited[nei]) stack.push(nei);
+    }
+
+Problems: 200, 695, 133, 547, 797
+
+----------
+2️⃣ BFS (Shortest path unweighted, level-by-level)
+    // Basic BFS
+    Queue<Integer> q = new LinkedList<>();
+    q.offer(start);
+    visited[start] = true;  // Mark BEFORE adding!
+    
+    while (!q.isEmpty()) {
+        int node = q.poll();
+        for (int nei : graph.get(node)) {
+            if (!visited[nei]) {
+                visited[nei] = true;  // Mark BEFORE adding!
+                q.offer(nei);
+            }
+        }
+    }
+    
+    // BFS with distance tracking
+    Queue<int[]> q = new LinkedList<>();
+    q.offer(new int[]{start, 0});
+    visited[start] = true;
+    
+    while (!q.isEmpty()) {
+        int[] curr = q.poll();
+        int node = curr[0], dist = curr[1];
+    
+        if (node == target) return dist;
+    
+        for (int nei : graph.get(node)) {
+            if (!visited[nei]) {
+                visited[nei] = true;
+                q.offer(new int[]{nei, dist + 1});
+            }
+        }
+    }
+
+Problems: 127, 1091, 994, 286, 102
+
+----------
+3️⃣ Topological Sort (Order tasks with dependencies)
+    // Kahn's Algorithm (BFS + in-degree)
+    int[] indegree = new int[n];
+    for (int i = 0; i < n; i++)
+        for (int nei : graph.get(i))
+            indegree[nei]++;
+    
+    Queue<Integer> q = new LinkedList<>();
+    for (int i = 0; i < n; i++)
+        if (indegree[i] == 0)
+            q.offer(i);
+    
+    List<Integer> result = new ArrayList<>();
+    while (!q.isEmpty()) {
+        int node = q.poll();
+        result.add(node);
+        for (int nei : graph.get(node)) {
+            if (--indegree[nei] == 0)
+                q.offer(nei);
+        }
+    }
+    
+    // If result.size() != n → cycle exists
+    return result.size() == n ? result : new ArrayList<>();
+
+Problems: 207, 210, 269
+
+----------
+4️⃣ Union-Find (Dynamic connectivity, grouping)
+    class UnionFind {
+        int[] parent, rank;
+        int components;
+    
+        UnionFind(int n) {
+            parent = new int[n];
+            rank = new int[n];
+            components = n;
+            for (int i = 0; i < n; i++)
+                parent[i] = i;
+        }
+    
+        int find(int x) {
+            if (parent[x] != x)
+                parent[x] = find(parent[x]);  // Path compression
+            return parent[x];
+        }
+    
+        boolean union(int x, int y) {
+            int rootX = find(x), rootY = find(y);
+            if (rootX == rootY) return false;
+    
+            // Union by rank
+            if (rank[rootX] < rank[rootY]) {
+                parent[rootX] = rootY;
+            } else if (rank[rootX] > rank[rootY]) {
+                parent[rootY] = rootX;
+            } else {
+                parent[rootY] = rootX;
+                rank[rootX]++;
+            }
+            components--;
+            return true;
+        }
+    }
+
+Problems: 547, 684, 1319, 323, 1584
+
+----------
+5️⃣ Cycle Detection
+    // Directed Graph (3-state DFS)
+    int[] state;  // 0=unvisited, 1=visiting, 2=visited
+    
+    boolean hasCycle(int node) {
+        if (state[node] == 1) return true;   // Back edge = cycle
+        if (state[node] == 2) return false;  // Already done
+    
+        state[node] = 1;
+        for (int nei : graph.get(node))
+            if (hasCycle(nei)) return true;
+        state[node] = 2;
+        return false;
+    }
+    
+    // Undirected Graph (DFS with parent tracking)
+    boolean hasCycle(int node, int parent, boolean[] visited) {
+        visited[node] = true;
+        for (int nei : graph.get(node)) {
+            if (!visited[nei]) {
+                if (hasCycle(nei, node, visited)) return true;
+            } else if (nei != parent) {
+                return true;  // Visited non-parent = cycle
+            }
+        }
+        return false;
+    }
+
+Problems: 207, 261, 684, 802
+
+----------
+6️⃣ Dijkstra (Shortest path weighted, non-negative)
+    int dijkstra(int start, int target, int n, List<List<int[]>> graph) {
+        int[] dist = new int[n];
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        dist[start] = 0;
+    
+        PriorityQueue<int[]> pq = new PriorityQueue<>((a, b) -> a[1] - b[1]);
+        pq.offer(new int[]{start, 0});
+    
+        while (!pq.isEmpty()) {
+            int[] curr = pq.poll();
+            int node = curr[0], d = curr[1];
+    
+            if (d > dist[node]) continue;  // Skip outdated
+    
+            for (int[] edge : graph.get(node)) {
+                int nei = edge[0], weight = edge[1];
+                int newDist = d + weight;
+                if (newDist < dist[nei]) {
+                    dist[nei] = newDist;
+                    pq.offer(new int[]{nei, newDist});
+                }
+            }
+        }
+    
+        return dist[target];
+    }
+
+Problems: 743, 787, 1631
+
+----------
+7️⃣ Grid as Graph (Matrix problems)
+    int[][] dirs = {{0,1}, {1,0}, {0,-1}, {-1,0}};
+    
+    void dfs(int r, int c, int[][] grid, boolean[][] visited) {
+        if (r < 0 || r >= grid.length || c < 0 || c >= grid[0].length)
+            return;
+        if (visited[r][c] || grid[r][c] == 0) return;
+    
+        visited[r][c] = true;
+    
+        for (int[] d : dirs)
+            dfs(r + d[0], c + d[1], grid, visited);
+    }
+
+Problems: 200, 695, 994, 286, 130
+
+----------
+8️⃣ Minimum Spanning Tree (Connect all with min cost)
+    // Kruskal's Algorithm
+    int kruskal(int n, int[][] edges) {
+        Arrays.sort(edges, (a, b) -> a[2] - b[2]);  // Sort by weight
+        UnionFind uf = new UnionFind(n);
+    
+        int totalCost = 0, edgesUsed = 0;
+    
+        for (int[] e : edges) {
+            if (uf.union(e[0], e[1])) {
+                totalCost += e[2];
+                if (++edgesUsed == n - 1) break;
+            }
+        }
+    
+        return edgesUsed == n - 1 ? totalCost : -1;
+    }
+
+Problems: 1584, 1135
+
+----------
+9️⃣ Backtracking on Graphs (Find all paths)
+    List<List<Integer>> allPaths = new ArrayList<>();
+    
+    void backtrack(int node, int target, List<Integer> path) {
+        path.add(node);
+    
+        if (node == target) {
+            allPaths.add(new ArrayList<>(path));
+        } else {
+            for (int nei : graph.get(node))
+                backtrack(nei, target, path);
+        }
+    
+        path.remove(path.size() - 1);  // Backtrack
+    }
+
+Problems: 797, 212
+
+----------
+🔟 Bipartite Check (Can 2-color the graph?)
+    boolean isBipartite(List<List<Integer>> graph) {
+        int n = graph.size();
+        int[] color = new int[n];  // 0=uncolored, 1/-1 are colors
+    
+        for (int i = 0; i < n; i++) {
+            if (color[i] != 0) continue;
+    
+            Queue<Integer> q = new LinkedList<>();
+            q.offer(i);
+            color[i] = 1;
+    
+            while (!q.isEmpty()) {
+                int node = q.poll();
+                for (int nei : graph.get(node)) {
+                    if (color[nei] == 0) {
+                        color[nei] = -color[node];
+                        q.offer(nei);
+                    } else if (color[nei] == color[node]) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+Problems: 785, 886
+
+----------
+📊 Pattern Recognition Cheat Sheet
+| If Problem Asks                | Pattern               | Template                             |
+| ------------------------------ | --------------------- | ------------------------------------ |
+| Shortest path (unweighted)     | BFS                   | Queue + visited                      |
+| Shortest path (weighted)       | Dijkstra              | PriorityQueue + dist[]               |
+| All paths / explore everything | DFS                   | Recursive or Stack                   |
+| Connected components           | DFS/BFS or Union-Find | visited[] or find()                  |
+| Detect cycle (directed)        | DFS 3-state           | state[]: 0/1/2                       |
+| Detect cycle (undirected)      | Union-Find or DFS     | union() or parent tracking           |
+| Order with dependencies        | Topological Sort      | Kahn's algorithm                     |
+| Dynamic connectivity           | Union-Find            | find() + union()                     |
+| Minimum cost to connect        | MST                   | Kruskal + Union-Find                 |
+| Can split into 2 groups?       | Bipartite             | BFS with coloring                    |
+| Matrix/Grid problems           | Grid DFS/BFS          | 4-directional array                  |
+| Find all solutions             | Backtracking          | path.add() → recurse → path.remove() |
+
+----------
+🎯 Quick Decision Tree
+    START
+      │
+      ├─ Need shortest path?
+      │   ├─ Unweighted? → BFS (Pattern 2)
+      │   └─ Weighted? → Dijkstra (Pattern 6)
+      │
+      ├─ Need all paths? → Backtracking (Pattern 9)
+      │
+      ├─ Check connectivity?
+      │   ├─ Static? → DFS/BFS (Pattern 1/2)
+      │   └─ Dynamic? → Union-Find (Pattern 4)
+      │
+      ├─ Has dependencies/ordering? → Topological Sort (Pattern 3)
+      │
+      ├─ Detect cycle?
+      │   ├─ Directed? → 3-state DFS (Pattern 5)
+      │   └─ Undirected? → Union-Find or DFS with parent (Pattern 5)
+      │
+      ├─ Minimum cost to connect all? → MST (Pattern 8)
+      │
+      ├─ Can 2-color? → Bipartite (Pattern 10)
+      │
+      └─ Grid/Matrix? → Grid Graph (Pattern 7)
+----------
+📝 Complete Practice List (37 Problems)
+
+Easy (9)
+
+    1. Number of Islands
+    2. Island Perimeter
+    3. Max Area of Island
+    4. Flood Fill
+    5. Find the Town Judge
+    6. Find Center of Star Graph
+    7. Find if Path Exists in Graph
+
+Medium (20)
+
+    1. Clone Graph
+    2. Course Schedule
+    3. Course Schedule II
+    4. Word Ladder
+    5. Surrounded Regions
+    6. Graph Valid Tree
+    7. Number of Connected Components
+    8. Evaluate Division
+    9. Number of Provinces
+    10. Redundant Connection
+    11. Is Graph Bipartite
+    12. All Paths Source to Target
+    13. Find Eventual Safe States
+    14. Possible Bipartition
+    15. Rotting Oranges
+    16. Shortest Path in Binary Matrix
+    17. Number of Operations to Make Network Connected
+    18. Time Needed to Inform All Employees
+    19. Reorder Routes
+
+Hard (8)
+
+    1. Alien Dictionary
+    2. Reconstruct Itinerary
+    3. Network Delay Time
+    4. Cheapest Flights Within K Stops
+    5. Bus Routes
+    6. Critical Connections in a Network
+    7. Min Cost to Connect All Points
+    8. Path With Minimum Effort
+----------
+💡 Memory Tricks
+1. BFS = Queue (Breadth = Queue-th)
+2. DFS = Stack (Depth = Stack-th) or Recursion
+3. Topological = In-degree (Count incoming edges)
+4. Union-Find = Parent array (Trees of components)
+5. Dijkstra = PriorityQueue (Always pick shortest distance)
+6. Cycle = State tracking (Visiting vs Visited)
+7. Grid = 4 directions ({0,1}, {1,0}, {0,-1}, {-1,0})
+8. MST = Sort edges (Smallest first)
+9. Backtracking = Add/Remove (Build path, then undo)
+10. Bipartite = Alternate colors (If same color = not bipartite)
+----------
+⚡ Common Mistakes to Avoid
+| Pattern          | Common Mistake               | Fix                                 |
+| ---------------- | ---------------------------- | ----------------------------------- |
+| BFS              | Mark visited after polling   | Mark BEFORE adding to queue         |
+| DFS Iterative    | No duplicate check after pop | Add `if (visited[node]) continue;`  |
+| Topological Sort | Not checking cycle           | Check `result.size() == n`          |
+| Union-Find       | No path compression          | Add `parent[x] = find(parent[x])`   |
+| Dijkstra         | Processing stale entries     | Add `if (d > dist[node]) continue;` |
+| Grid DFS         | No boundary check            | Check `r < 0 \                      |
+| Backtracking     | Forget to remove             | Always `path.remove(path.size()-1)` |
+| Cycle Detection  | Wrong state transitions      | 0→1→2, never back                   |
+
+----------
+
+This is your complete graph interview prep guide! Master these 10 patterns and you can solve 95% of graph problems. 🚀
+
+
+PRACTICE PROBLEMS
+
+🔹 EASY (9 problems)
+
+
+1. Number of Islands - DFS/BFS basics
+2. Island Perimeter - Grid traversal
+3. Flood Fill - DFS/BFS application
+4. Find the Town Judge - Graph representation
+5. Find if Path Exists in Graph - Basic DFS/BFS
+6. Find Center of Star Graph - Graph properties
+7. Minimum Number of Vertices to Reach All Nodes - Graph analysis
+8. Destination City - Simple graph traversal
+9. Valid Path - Basic connectivity
+
+🔹 MEDIUM (20 problems)
+
+
+1. Clone Graph - DFS with node cloning
+2. Course Schedule - Cycle detection (topological sort)
+3. Course Schedule II - Topological sort
+4. Graph Valid Tree - Cycle detection + connectivity
+5. Number of Connected Components in an Undirected Graph - Union-Find or DFS
+6. Number of Provinces - Connected components
+7. Redundant Connection - Union-Find, cycle detection
+8. Is Graph Bipartite - Bipartite check
+9. All Paths From Source to Target - Backtracking
+10. Find Eventual Safe States - Cycle detection
+11. Maximal Network Rank - Graph properties
+12. Shortest Path with Alternating Colors - BFS variation
+13. Number of Operations to Make Network Connected - Union-Find
+14. Shortest Path in Binary Matrix - BFS shortest path
+15. Word Ladder - BFS transformation
+16. Surrounded Regions - DFS/BFS boundary
+17. Evaluate Division - Weighted graph DFS
+18. Time Needed to Inform All Employees - Tree/graph traversal
+19. Reorder Routes to Make All Paths Lead to the City Zero - Directed graph
+20. Possible Bipartition - Bipartite check
+
+🔹 HARD (8 problems)
+
+
+1. Alien Dictionary - Topological sort
+2. Network Delay Time - Dijkstra's algorithm
+3. Cheapest Flights Within K Stops - Bellman-Ford/Dijkstra variation
+4. Critical Connections in a Network - Tarjan's algorithm (bridges)
+5. Min Cost to Connect All Points - MST (Kruskal/Prim)
+6. Path With Minimum Effort - Dijkstra/Binary search
+7. Bus Routes - Complex BFS
+8. Reconstruct Itinerary - Eulerian path
