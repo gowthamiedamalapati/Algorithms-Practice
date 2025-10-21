@@ -1,0 +1,29 @@
+class Solution(object):
+    def canPartition(self, nums):
+        s = sum(nums)
+        if s%2:
+            return False
+        target = s//2
+        path = []
+        nums.sort()
+        memo = {} 
+
+        def backtrack(start,target):
+            if target == 0:
+                return True
+            if (start, target) in memo:
+                return memo[(start, target)]
+            for i in range(start,len(nums)):
+                if i > start and nums[i] == nums[i-1]:
+                    continue
+                if target < nums[i]:
+                    break
+                if backtrack(i+1,target-nums[i]):
+                    memo[(start, target)] = True
+                    return True
+            memo[(start, target)] = False
+            return False
+        
+        return backtrack(0,target)
+         
+        
